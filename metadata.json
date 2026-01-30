@@ -1,0 +1,7 @@
+{
+  "name": "FurniSnap - AI Furniture Search",
+  "description": "An AI-powered visual furniture search & comparison platform. Upload an image to find similar products, detect styles, and compare prices across retailers.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
