@@ -1,22 +1,27 @@
 import { db } from '../../../lib/db-mock';
+import { analyzeFurnitureImage } from '../../../lib/server/gemini';
+import { fetchShoppingCandidates } from '../../../lib/server/serpapi';
+import { createMockCandidates } from '../../../lib/server/mockProducts';
+import { rankProducts } from '../../../lib/server/rankProducts';
 
 // POST /api/search
 // The "Brain" that coordinates the entire flow
 export async function POST(req: Request) {
   try {
-    const { imageUrl, userId } = await req.json();
-    const host = req.headers.get('host') || 'localhost:3000';
-    const protocol = host.includes('localhost') ? 'http' : 'https';
-    const baseUrl = `${protocol}://${host}`;
+    const { imageBase64, imageUrl, userId } = await req.json();
 
-    // 1. Analyze Image
-    // Note: In a real app, imageUrl might be a remote URL. 
-    // Here we treat it as the data source (potentially dataURI).
-    const analysisRes = await fetch(`${baseUrl}/api/analyze-image`, {
-      method: 'POST',
-      body: JSON.stringify({ imageUrl })
-    });
-    const analysis = await analysisRes.json();
+    let data = imageBase64;
+    if (!data && imageUrl && imageUrl.startsWith('data:image')) {
+      data = imageUrl.split(',')[1];
+    } else if (!data && imageUrl) {
+      return Response.json({ error: 'Image data required (base64 or data URI)' }, { status: 400 });
+    }
+
+    if (!data) {
+      return Response.json({ error: 'Image data required' }, { status: 400 });
+    }
+
+    const analysis = await analyzeFurnitureImage(data);
     
     // 2. Log Search to DB
     const searchRecord = await db.searches.insert({
@@ -24,19 +29,14 @@ export async function POST(req: Request) {
       image_url: "uploaded_image_placeholder", // Store the S3 url here in prod
       detected_category: analysis.category,
       detected_style: analysis.style,
-      detected_tags: { tags: analysis.tags, colors: analysis.colors, materials: analysis.materials }
+      detected_tags: { colors: analysis.colors, materials: analysis.materials, description: analysis.description }
     });
 
     // 3. Fetch Candidates
-    const fetchRes = await fetch(`${baseUrl}/api/fetch-products`, {
-      method: 'POST',
-      body: JSON.stringify({ 
-        imageUrl: imageUrl,
-        category: analysis.category, 
-        style: analysis.style
-      })
-    });
-    const rawProducts = await fetchRes.json();
+    const useMock = process.env.USE_MOCK_PRODUCTS === 'true';
+    const rawProducts = useMock
+      ? createMockCandidates(analysis.category, analysis.style)
+      : await fetchShoppingCandidates(analysis.category, analysis.style);
 
     // 3.1 Assign Temp IDs for Ranking (since fetch-products returns raw data without DB IDs)
     const productsWithIds = rawProducts.map((p: any) => ({
@@ -45,24 +45,28 @@ export async function POST(req: Request) {
     }));
 
     // 4. Rank Results
-    const rankRes = await fetch(`${baseUrl}/api/rank-results`, {
-      method: 'POST',
-      body: JSON.stringify({
-        products: productsWithIds,
-        targetStyle: analysis.style
-      })
-    });
-    const rankedMeta = await rankRes.json();
+    const rankedMeta = rankProducts(productsWithIds, analysis.style);
 
     // 5. Upsert Products into DB (PRODUCTS + PRODUCT_PRICES)
     // We map the raw product data + ranked metadata into our DB schema
     const resultsForResponse: any[] = [];
 
+    const buildTags = (label: string | undefined, price: number, styleMatch: boolean) => {
+      const tags = new Set<string>();
+      if (label && label !== 'Similar') tags.add(label);
+      if (price < 500) tags.add('Budget Friendly');
+      if (price > 3000) tags.add('Premium');
+      if (styleMatch) tags.add('Same Style');
+      return Array.from(tags);
+    };
+
     await Promise.all(productsWithIds.map(async (p: any) => {
       // Find ranking info
       const rankInfo = rankedMeta.find((r: any) => r.productId === p.id);
       
-      const dbProduct = await db.products.upsert({
+      const tags = buildTags(rankInfo?.label, p.price, true);
+
+      await db.products.upsert({
         id: p.id,
         title: p.title,
         brand: p.brand,
@@ -71,7 +75,7 @@ export async function POST(req: Request) {
         image_url: p.image,      // Map 'image' -> 'image_url'
         product_url: p.url,      // Map 'url' -> 'product_url'
         source_platform: p.brand,
-        attributes: { label: rankInfo?.label }, 
+        attributes: { label: rankInfo?.label, tags },
         price: p.price,
         currency: p.currency || "USD"
       });
@@ -92,7 +96,12 @@ export async function POST(req: Request) {
             productUrl: p.url,
             similarityScore: rankInfo.similarityScore,
             rank: rankInfo.rank,
-            label: rankInfo.label
+            label: rankInfo.label,
+            tags,
+            style: analysis.style,
+            category: analysis.category,
+            colors: analysis.colors,
+            materials: analysis.materials
         });
       }
     }));
@@ -111,9 +120,8 @@ export async function POST(req: Request) {
     // Return combined result to frontend matching the spec
     return Response.json({
       searchId: searchRecord.id,
-      detectedCategory: analysis.category,
-      detectedStyle: analysis.style,
-      results: resultsForResponse
+      analysis,
+      products: resultsForResponse
     });
 
   } catch (error) {

@@ -27,10 +27,16 @@ export interface Product {
   tags: string[]; // e.g., 'Cheaper', 'Premium', 'Same Style'
   style: string;
   category: string;
+  colors?: string[];
+  materials?: string[];
 }
 
 export interface SearchFilters {
   minPrice: number;
   maxPrice: number;
   style: string | null;
+  brand: string | null;
+  category: string | null;
+  colors: string[];
+  materials: string[];
 }

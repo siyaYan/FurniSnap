@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, Sparkles, Search, Tag } from 'lucide-react';
+import { Loader2, Sparkles, Search } from 'lucide-react';
 
 interface LoadingScreenProps {
   step: 'UPLOADING' | 'ANALYZING' | 'SEARCHING';

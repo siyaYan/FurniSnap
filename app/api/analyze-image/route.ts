@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { analyzeFurnitureImage } from '../../../lib/server/gemini';
 
 // POST /api/analyze-image
 export async function POST(req: Request) {
@@ -20,54 +20,9 @@ export async function POST(req: Request) {
        return Response.json({ error: "Image data required" }, { status: 400 });
     }
 
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) {
-      return Response.json({ error: "Server API Key missing" }, { status: 500 });
-    }
+    const analysis = await analyzeFurnitureImage(data);
 
-    const ai = new GoogleGenAI({ apiKey });
-
-    const prompt = `
-      Analyze this furniture image.
-      Identify category (e.g. Sofa, Coffee Table), style (e.g. Scandinavian, Industrial).
-      Generate descriptive tags for visual features (e.g. materials, shapes, colors).
-      Return a structured JSON.
-    `;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: {
-        parts: [
-          { inlineData: { mimeType: 'image/jpeg', data } },
-          { text: prompt }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            category: { type: Type.STRING },
-            style: { type: Type.STRING },
-            tags: { 
-              type: Type.ARRAY, 
-              items: { type: Type.STRING },
-              description: "Visual feature tags like 'light wood', 'round edges', 'minimal'"
-            }
-          },
-          required: ["category", "style", "tags"]
-        }
-      }
-    });
-
-    const analysis = JSON.parse(response.text || "{}");
-    
-    // Ensure strict response format
-    return Response.json({
-      category: analysis.category,
-      style: analysis.style,
-      tags: analysis.tags
-    });
+    return Response.json(analysis);
 
   } catch (error) {
     console.error("API Analyze Error:", error);

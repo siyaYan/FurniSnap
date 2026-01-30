@@ -1,9 +1,8 @@
 import { db } from '../../../lib/db-mock';
 
 // GET /api/products/[id]
-export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    const params = await props.params;
     // Returns joined product + price data
     const product = await db.products.selectByIdWithPrice(params.id);
 

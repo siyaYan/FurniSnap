@@ -1,3 +1,6 @@
+import { fetchShoppingCandidates } from '../../../lib/server/serpapi';
+import { createMockCandidates } from '../../../lib/server/mockProducts';
+
 // POST /api/fetch-products
 // Simulates calling Bing Visual Search / Google Shopping via SerpAPI
 
@@ -8,34 +11,11 @@ export async function POST(req: Request) {
     // Mocking the aggregator response based on inputs
     // In a real app, 'imageUrl' would be sent to Visual Search APIs
     
-    const mockProducts = [
-      {
-        title: `${style} ${category}`,
-        image: `https://picsum.photos/400/500?random=${Math.floor(Math.random() * 100)}`,
-        url: "https://ikea.com/product/1",
-        price: 299,
-        currency: "USD",
-        brand: "IKEA"
-      },
-      {
-        title: `Premium ${category}`,
-        image: `https://picsum.photos/400/500?random=${Math.floor(Math.random() * 100)}`,
-        url: "https://westelm.com/product/2",
-        price: 1299,
-        currency: "USD",
-        brand: "West Elm"
-      },
-      {
-        title: `Affordable ${style} Option`,
-        image: `https://picsum.photos/400/500?random=${Math.floor(Math.random() * 100)}`,
-        url: "https://wayfair.com/product/3",
-        price: 150,
-        currency: "USD",
-        brand: "Wayfair"
-      }
-    ];
-
-    return Response.json(mockProducts);
+    const useMock = process.env.USE_MOCK_PRODUCTS === 'true';
+    const products = useMock
+      ? createMockCandidates(category, style)
+      : await fetchShoppingCandidates(category, style);
+    return Response.json(products);
 
   } catch (error) {
     return Response.json({ error: "Failed to fetch products" }, { status: 500 });

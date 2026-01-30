@@ -15,15 +15,16 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    if (!body.title || !body.image_url) {
+    const imageUrl = body.image_url || body.imageUrl;
+    if (!body.title || !imageUrl) {
       return Response.json({ error: "Missing required product fields" }, { status: 400 });
     }
     
     // Handles insert into PRODUCTS and PRODUCT_PRICES
     const product = await db.products.upsert({
         ...body,
-        style_tag: body.style, // Accept 'style' from input but save as 'style_tag'
-        image_url: body.imageUrl // Accept camelCase
+        style_tag: body.style_tag || body.style, // Accept 'style' from input but save as 'style_tag'
+        image_url: imageUrl
     });
     
     return Response.json(product, { status: 201 });

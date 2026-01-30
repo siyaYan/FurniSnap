@@ -1,9 +1,8 @@
 import { db } from '../../../lib/db-mock';
 
 // GET /api/search/[id]
-export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    const params = await props.params;
     const searchId = params.id;
     
     const search = await db.searches.selectById(searchId);
@@ -20,12 +19,15 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
       
       // Map DB structure back to Frontend 'Product' type if needed, 
       // or return full DB object. Here we mix them for convenience.
+      const tags = product?.attributes?.tags || (product?.attributes?.label ? [product.attributes.label] : []);
       return {
         ...r,
         product: product ? {
             ...product,
-            imageUrl: product.image_url, // Mapper
-            style: product.style_tag // Mapper
+            imageUrl: product.image_url,
+            productUrl: product.product_url,
+            style: product.style_tag,
+            tags
         } : null
       };
     }));
