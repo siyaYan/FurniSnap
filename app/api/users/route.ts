@@ -1,4 +1,4 @@
-import { db } from '../../lib/db-mock';
+import { db } from '@/lib/db-mock';
 
 // POST /api/users - Create or Update user
 export async function POST(req: Request) {

@@ -1,7 +1,7 @@
-import { db } from '../../../lib/db-mock';
+import { db } from '@/lib/db-mock';
 
 // GET /api/search/[id]
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: { id: string } }) {
   try {
     const searchId = params.id;
     

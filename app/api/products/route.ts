@@ -1,7 +1,7 @@
-import { db } from '../../lib/db-mock';
+import { db } from '@/lib/db-mock';
 
 // GET /api/products
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   try {
     // Returns joined product + price data
     const products = await db.products.listWithPrice();
