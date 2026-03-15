@@ -1,9 +1,9 @@
 import { db } from '@/lib/db-mock';
 
 // GET /api/search/[id]
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const searchId = params.id;
+    const { id: searchId } = await params;
     
     const search = await db.searches.selectById(searchId);
     
