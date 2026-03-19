@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Product } from '../types';
 import { ExternalLink, Heart } from 'lucide-react';
 
@@ -7,6 +7,8 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const [saved, setSaved] = useState(false);
+
   const formatPrice = (price: number, currency: string) => {
     try {
       return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(price);
@@ -18,19 +20,24 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   return (
     <div className="group break-inside-avoid mb-6 relative">
       <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-stone-100/50">
-        
+
         {/* Image Container */}
         <div className="relative aspect-[4/5] overflow-hidden bg-stone-100">
-          <img 
-            src={product.imageUrl} 
-            alt={product.title} 
+          <img
+            src={product.imageUrl}
+            alt={product.title}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           />
-          
+
           {/* Overlay Actions */}
           <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <button className="p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white text-stone-800">
-              <Heart className="w-4 h-4" />
+            <button
+              onClick={() => setSaved(prev => !prev)}
+              aria-label={saved ? `Remove ${product.title} from saved` : `Save ${product.title}`}
+              aria-pressed={saved}
+              className="p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white text-stone-800"
+            >
+              <Heart className={`w-4 h-4 transition-colors ${saved ? 'fill-red-500 text-red-500' : ''}`} />
             </button>
           </div>
 
@@ -50,7 +57,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             <h3 className="font-medium text-stone-900 text-lg leading-tight truncate pr-2">{product.title}</h3>
             <span className="font-semibold text-stone-900">{formatPrice(product.price, product.currency)}</span>
           </div>
-          
+
           <p className="text-sm text-stone-500 mb-3">{product.brand}</p>
 
           <div className="flex flex-wrap gap-1 mb-4">
@@ -61,9 +68,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             ))}
           </div>
 
-          <button className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2">
-            View Product <ExternalLink className="w-3 h-3" />
-          </button>
+          <a
+            href={product.productUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`View ${product.title} on retailer site`}
+            className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
+          >
+            View Product <ExternalLink className="w-3 h-3" aria-hidden="true" />
+          </a>
         </div>
       </div>
     </div>

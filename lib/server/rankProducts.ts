@@ -8,9 +8,17 @@ export interface RankedProductMeta {
   label: string;
 }
 
+const deterministicOffset = (id: string): number => {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  }
+  return (hash % 20);
+};
+
 export const rankProducts = (products: Array<RawProductCandidate & { id: string }>, targetStyle?: string): RankedProductMeta[] => {
   const ranked = products.map((p, index) => {
-    let score = 70 + Math.random() * 20;
+    let score = 70 + deterministicOffset(p.id || String(index));
     if (p.title && targetStyle && p.title.toLowerCase().includes(targetStyle.toLowerCase())) {
       score += 10;
     }

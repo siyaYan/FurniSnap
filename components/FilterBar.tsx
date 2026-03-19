@@ -1,5 +1,5 @@
 import React from 'react';
-import { SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { SlidersHorizontal, X } from 'lucide-react';
 import { SearchFilters } from '../types';
 
 interface FilterBarProps {
@@ -55,64 +55,77 @@ const FilterBar: React.FC<FilterBarProps> = ({
   return (
     <div className="sticky top-0 z-30 bg-stone-50/80 backdrop-blur-lg py-4 border-b border-stone-200/50 mb-6 transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col gap-4">
-        
+
         <div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-stone-200 rounded-full text-sm font-medium text-stone-700 hover:border-stone-400 whitespace-nowrap">
-            <SlidersHorizontal className="w-4 h-4" /> Filters
-          </button>
+          <div className="flex items-center gap-2 px-4 py-2 bg-white border border-stone-200 rounded-full text-sm font-medium text-stone-700 whitespace-nowrap" aria-label="Filters">
+            <SlidersHorizontal className="w-4 h-4" aria-hidden="true" /> Filters
+          </div>
 
-          <div className="h-6 w-px bg-stone-300 mx-1"></div>
+          <div className="h-6 w-px bg-stone-300 mx-1" aria-hidden="true"></div>
 
-          <button className="px-4 py-2 bg-stone-900 text-white rounded-full text-sm font-medium whitespace-nowrap shadow-sm">
+          <div className="px-4 py-2 bg-stone-900 text-white rounded-full text-sm font-medium whitespace-nowrap shadow-sm" aria-label={`Detected style: ${detectedStyle}`}>
             Style: {detectedStyle}
-          </button>
+          </div>
 
           <button
             className="flex items-center gap-1 px-4 py-2 bg-white border border-stone-200 rounded-full text-sm font-medium text-stone-600 hover:bg-stone-50 whitespace-nowrap"
             onClick={clearFilters}
+            aria-label="Clear all filters"
           >
-            Clear <ChevronDown className="w-3 h-3 ml-1" />
+            Clear <X className="w-3 h-3 ml-1" aria-hidden="true" />
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white border border-stone-200 rounded-2xl p-4">
-            <p className="text-xs font-semibold text-stone-500 uppercase tracking-widest mb-3">Price Range</p>
+            <p className="text-xs font-semibold text-stone-500 uppercase tracking-widest mb-3" id="price-range-label">Price Range</p>
             <div className="flex items-center gap-3">
+              <label htmlFor="price-min" className="sr-only">Minimum price</label>
               <input
+                id="price-min"
                 type="number"
                 min={0}
                 max={filters.maxPrice}
                 value={filters.minPrice}
                 onChange={(event) => updateMinPrice(Number(event.target.value))}
                 className="w-24 rounded-lg border border-stone-200 px-2 py-1 text-sm"
+                aria-labelledby="price-range-label"
               />
-              <span className="text-stone-400 text-sm">to</span>
+              <span className="text-stone-400 text-sm" aria-hidden="true">to</span>
+              <label htmlFor="price-max" className="sr-only">Maximum price</label>
               <input
+                id="price-max"
                 type="number"
                 min={filters.minPrice}
                 max={priceMax}
                 value={filters.maxPrice}
                 onChange={(event) => updateMaxPrice(Number(event.target.value))}
                 className="w-24 rounded-lg border border-stone-200 px-2 py-1 text-sm"
+                aria-labelledby="price-range-label"
               />
             </div>
             <div className="mt-3 space-y-2">
+              <label htmlFor="range-min" className="sr-only">Minimum price slider</label>
               <input
+                id="range-min"
                 type="range"
                 min={0}
                 max={priceMax}
                 value={filters.minPrice}
                 onChange={(event) => updateMinPrice(Number(event.target.value))}
                 className="w-full"
+                aria-label="Minimum price"
               />
+              <label htmlFor="range-max" className="sr-only">Maximum price slider</label>
               <input
+                id="range-max"
                 type="range"
                 min={0}
                 max={priceMax}
                 value={filters.maxPrice}
                 onChange={(event) => updateMaxPrice(Number(event.target.value))}
                 className="w-full"
+                aria-label="Maximum price"
               />
             </div>
           </div>
@@ -120,7 +133,9 @@ const FilterBar: React.FC<FilterBarProps> = ({
           <div className="bg-white border border-stone-200 rounded-2xl p-4">
             <p className="text-xs font-semibold text-stone-500 uppercase tracking-widest mb-3">Brand & Category</p>
             <div className="flex flex-col gap-3">
+              <label htmlFor="filter-category" className="sr-only">Category</label>
               <select
+                id="filter-category"
                 value={filters.category || ''}
                 onChange={(event) => onFilterChange({ ...filters, category: event.target.value || null })}
                 className="rounded-lg border border-stone-200 px-3 py-2 text-sm"
@@ -130,7 +145,9 @@ const FilterBar: React.FC<FilterBarProps> = ({
                   <option key={category} value={category}>{category}</option>
                 ))}
               </select>
+              <label htmlFor="filter-brand" className="sr-only">Brand</label>
               <select
+                id="filter-brand"
                 value={filters.brand || ''}
                 onChange={(event) => onFilterChange({ ...filters, brand: event.target.value || null })}
                 className="rounded-lg border border-stone-200 px-3 py-2 text-sm"
@@ -145,11 +162,13 @@ const FilterBar: React.FC<FilterBarProps> = ({
 
           <div className="bg-white border border-stone-200 rounded-2xl p-4">
             <p className="text-xs font-semibold text-stone-500 uppercase tracking-widest mb-3">Colors & Materials</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by color and material">
               {colors.map((color) => (
                 <button
                   key={color}
                   onClick={() => onFilterChange({ ...filters, colors: toggleItem(filters.colors, color) })}
+                  aria-pressed={filters.colors.includes(color)}
+                  aria-label={`Filter by color: ${color}`}
                   className={`px-3 py-1 rounded-full text-xs font-medium border ${
                     filters.colors.includes(color) ? 'bg-stone-900 text-white border-stone-900' : 'bg-white text-stone-600 border-stone-200'
                   }`}
@@ -161,6 +180,8 @@ const FilterBar: React.FC<FilterBarProps> = ({
                 <button
                   key={material}
                   onClick={() => onFilterChange({ ...filters, materials: toggleItem(filters.materials, material) })}
+                  aria-pressed={filters.materials.includes(material)}
+                  aria-label={`Filter by material: ${material}`}
                   className={`px-3 py-1 rounded-full text-xs font-medium border ${
                     filters.materials.includes(material) ? 'bg-stone-900 text-white border-stone-900' : 'bg-white text-stone-600 border-stone-200'
                   }`}
