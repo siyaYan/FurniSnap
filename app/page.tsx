@@ -172,7 +172,7 @@ const Page: React.FC = () => {
       {/* Navbar */}
       <nav className="flex items-center justify-between px-8 py-6 bg-transparent relative z-10">
         <div
-          className="text-3xl font-sans font-semibold cursor-pointer text-brand-terracotta"
+          className="text-3xl font-medium cursor-pointer text-brand-terracotta"
           onClick={resetSearch}
           role="button"
           tabIndex={0}
@@ -216,7 +216,7 @@ const Page: React.FC = () => {
               <div className="w-16 h-16 bg-brand-terracotta/10 rounded-full flex items-center justify-center mb-4">
                 <AlertCircle className="w-8 h-8 text-brand-terracotta" />
               </div>
-              <h2 className="text-2xl font-semibold text-brand-dark mb-2">Something went wrong</h2>
+              <h2 className="text-2xl font-medium text-brand-dark mb-2">Something went wrong</h2>
               <p className="text-brand-dark/60 mb-6">{errorMessage}</p>
               <button
                 onClick={resetSearch}
@@ -260,7 +260,7 @@ const Page: React.FC = () => {
                 <motion.h1
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-6xl md:text-7xl font-bold text-brand-terracotta mb-4"
+                  className="text-6xl md:text-7xl font-medium text-brand-terracotta mb-4"
                 >
                   Snap a space. Find your style.
                 </motion.h1>
@@ -385,7 +385,7 @@ const Page: React.FC = () => {
                     <motion.h2
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="text-5xl font-bold text-brand-dark mb-2"
+                      className="text-5xl font-medium text-brand-dark mb-2"
                     >
                       Found {visibleProducts.length} Matches
                     </motion.h2>

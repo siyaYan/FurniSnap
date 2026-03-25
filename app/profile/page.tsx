@@ -65,14 +65,14 @@ const ProfilePage: React.FC = () => {
         <Link href="/" className="text-brand-dark/50 hover:text-brand-terracotta transition-colors" aria-label="Back to home">
           <ArrowLeft className="w-5 h-5" />
         </Link>
-        <span className="text-2xl font-semibold text-brand-terracotta">FurniSnap</span>
+        <span className="text-2xl font-medium text-brand-terracotta">FurniSnap</span>
       </nav>
 
       <main className="relative z-10 max-w-7xl mx-auto px-8 pb-20">
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-5xl font-bold text-brand-dark mb-8"
+          className="text-5xl font-medium text-brand-dark mb-8"
         >
           My Profile
         </motion.h1>
