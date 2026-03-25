@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Camera, RefreshCw, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Camera, RefreshCw, AlertCircle, User, ArrowUpDown } from 'lucide-react';
 import { fileToBase64 } from '../services/imageUtils';
 import { searchByImage } from '../services/searchService';
 import type { AnalysisResult, Product, SearchFilters } from '../types';
@@ -19,6 +20,7 @@ const Page: React.FC = () => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [sortBy, setSortBy] = useState<'score' | 'price-asc' | 'price-desc'>('score');
   const [filters, setFilters] = useState<SearchFilters>({
     minPrice: 0,
     maxPrice: 10000,
@@ -59,7 +61,7 @@ const Page: React.FC = () => {
       setErrorMessage('');
       setLoadingState(LoadingState.UPLOADING);
       const base64 = await fileToBase64(file);
-      setPreviewImage(`data:image/jpeg;base64,${base64}`);
+      setPreviewImage(`data:${file.type};base64,${base64}`);
 
       setLoadingState(LoadingState.ANALYZING);
       const { analysis, products: results } = await searchByImage(base64);
@@ -67,6 +69,14 @@ const Page: React.FC = () => {
 
       setLoadingState(LoadingState.SEARCHING);
       setProducts(results);
+
+      // Persist search to history in localStorage
+      try {
+        const existing = JSON.parse(localStorage.getItem('furnisnap_history') || '[]');
+        const entry = { id: crypto.randomUUID(), timestamp: new Date().toISOString(), analysis, products: results };
+        const updated = [entry, ...existing].slice(0, 20); // keep last 20
+        localStorage.setItem('furnisnap_history', JSON.stringify(updated));
+      } catch { /* ignore */ }
 
       setLoadingState(LoadingState.COMPLETE);
     } catch (error) {
@@ -97,8 +107,15 @@ const Page: React.FC = () => {
 
   const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean))).sort();
   const brands = Array.from(new Set(products.map(p => p.brand).filter(Boolean))).sort();
-  const colors = Array.from(new Set((analysisResult?.colors || []).filter(Boolean))).sort();
-  const materials = Array.from(new Set((analysisResult?.materials || []).filter(Boolean))).sort();
+  // Derive from actual product data so filter chips always match what products have
+  const colors = Array.from(new Set(products.flatMap(p => p.colors || []).filter(Boolean))).sort();
+  const materials = Array.from(new Set(products.flatMap(p => p.materials || []).filter(Boolean))).sort();
+
+  const SORT_OPTIONS: { value: 'score' | 'price-asc' | 'price-desc'; label: string }[] = [
+    { value: 'score', label: 'Best Match' },
+    { value: 'price-asc', label: 'Price: Low to High' },
+    { value: 'price-desc', label: 'Price: High to Low' },
+  ];
 
   const visibleProducts = products.filter(p => {
     if (p.price < filters.minPrice || p.price > filters.maxPrice) return false;
@@ -113,6 +130,10 @@ const Page: React.FC = () => {
       if (!filters.materials.some(material => productMaterials.includes(material))) return false;
     }
     return true;
+  }).sort((a, b) => {
+    if (sortBy === 'price-asc') return a.price - b.price;
+    if (sortBy === 'price-desc') return b.price - a.price;
+    return b.similarityScore - a.similarityScore; // 'score' default
   });
 
   return (
@@ -131,9 +152,11 @@ const Page: React.FC = () => {
                 <RefreshCw className="w-5 h-5" />
               </button>
             )}
-            <div className="w-8 h-8 rounded-full bg-stone-200 overflow-hidden">
-              <img src="https://picsum.photos/100/100" alt="User avatar" className="w-full h-full object-cover opacity-80" />
-            </div>
+            <Link href="/profile" aria-label="View profile">
+              <div className="w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center hover:bg-stone-300 transition-colors">
+                <User className="w-4 h-4 text-stone-600" />
+              </div>
+            </Link>
           </div>
         </div>
       </nav>
@@ -268,13 +291,35 @@ const Page: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="flex gap-2" aria-label="Detected colors">
-                  {analysisResult.colors.map(color => (
-                    <div key={color} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-xs font-medium text-stone-600">
-                      <div className="w-3 h-3 rounded-full bg-stone-400 border border-stone-200" style={{ backgroundColor: color.toLowerCase() }} aria-hidden="true"></div>
-                      {color}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex gap-2 flex-wrap" aria-label="Detected colors">
+                    {analysisResult.colors.map(color => (
+                      <div key={color} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-xs font-medium text-stone-600">
+                        <div className="w-3 h-3 rounded-full bg-stone-400 border border-stone-200" style={{ backgroundColor: color.toLowerCase() }} aria-hidden="true"></div>
+                        {color}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2 ml-auto">
+                    <ArrowUpDown className="w-4 h-4 text-stone-400" aria-hidden="true" />
+                    <div className="flex rounded-xl border border-stone-200 bg-white overflow-hidden text-sm" role="group" aria-label="Sort results">
+                      {SORT_OPTIONS.map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setSortBy(opt.value)}
+                          aria-pressed={sortBy === opt.value}
+                          className={`px-3 py-1.5 font-medium transition-colors whitespace-nowrap ${
+                            sortBy === opt.value
+                              ? 'bg-stone-900 text-white'
+                              : 'text-stone-500 hover:bg-stone-50'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                 </div>
               </div>
 

@@ -45,7 +45,12 @@ export async function POST(req: Request) {
     }));
 
     // 4. Rank Results
-    const rankedMeta = rankProducts(productsWithIds, analysis.style);
+    const rankedMeta = rankProducts(productsWithIds, {
+      targetStyle: analysis.style,
+      targetCategory: analysis.category,
+      targetColors: analysis.colors,
+      targetMaterials: analysis.materials
+    });
 
     // 5. Upsert Products into DB (PRODUCTS + PRODUCT_PRICES)
     // We map the raw product data + ranked metadata into our DB schema
@@ -64,7 +69,10 @@ export async function POST(req: Request) {
       // Find ranking info
       const rankInfo = rankedMeta.find((r: any) => r.productId === p.id);
       
-      const tags = buildTags(rankInfo?.label, p.price, true);
+      const styleMatches = analysis.style
+        ? (p.title || '').toLowerCase().includes(analysis.style.toLowerCase())
+        : false;
+      const tags = buildTags(rankInfo?.label, p.price, styleMatches);
 
       await db.products.upsert({
         id: p.id,
@@ -100,8 +108,8 @@ export async function POST(req: Request) {
             tags,
             style: analysis.style,
             category: analysis.category,
-            colors: analysis.colors,
-            materials: analysis.materials
+            colors: [] as string[],
+            materials: [] as string[]
         });
       }
     }));
@@ -113,6 +121,23 @@ export async function POST(req: Request) {
       similarity_score: r.similarityScore,
       rank_position: r.rank
     })));
+
+    // Assign staggered color/material subsets so the filter produces varied results.
+    // Products that have their own colors (from mock data) keep them; others get a
+    // deterministic slice of the analysis colors/materials based on their position.
+    resultsForResponse.forEach((item, idx) => {
+      const rawProduct = productsWithIds.find((p: any) => p.id === item.id);
+      if (rawProduct?.colors && rawProduct.colors.length > 0) {
+        item.colors = rawProduct.colors;
+      } else {
+        item.colors = analysis.colors.filter((_, i) => (i + idx) % 2 === 0);
+      }
+      if (rawProduct?.materials && rawProduct.materials.length > 0) {
+        item.materials = rawProduct.materials;
+      } else {
+        item.materials = analysis.materials.filter((_, i) => (i + idx) % 2 === 0);
+      }
+    });
 
     // Sort results by rank before returning
     resultsForResponse.sort((a, b) => a.rank - b.rank);

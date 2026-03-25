@@ -1,6 +1,22 @@
-import React, { useState } from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import { Product } from '../types';
 import { ExternalLink, Heart } from 'lucide-react';
+
+const LIKED_KEY = 'furnisnap_liked';
+
+const getLikedIds = (): string[] => {
+  try {
+    return JSON.parse(localStorage.getItem(LIKED_KEY) || '[]');
+  } catch {
+    return [];
+  }
+};
+
+const setLikedIds = (ids: string[]) => {
+  localStorage.setItem(LIKED_KEY, JSON.stringify(ids));
+};
 
 interface ProductCardProps {
   product: Product;
@@ -8,6 +24,29 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setSaved(getLikedIds().includes(product.id));
+  }, [product.id]);
+
+  const toggleSaved = () => {
+    const ids = getLikedIds();
+    const next = ids.includes(product.id)
+      ? ids.filter(id => id !== product.id)
+      : [...ids, product.id];
+    setLikedIds(next);
+
+    // Also persist the full product object for the profile page
+    try {
+      const saved: Product[] = JSON.parse(localStorage.getItem('furnisnap_liked_products') || '[]');
+      const updated = next.includes(product.id)
+        ? [...saved.filter(p => p.id !== product.id), product]
+        : saved.filter(p => p.id !== product.id);
+      localStorage.setItem('furnisnap_liked_products', JSON.stringify(updated));
+    } catch { /* ignore */ }
+
+    setSaved(next.includes(product.id));
+  };
 
   const formatPrice = (price: number, currency: string) => {
     try {
@@ -32,7 +71,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           {/* Overlay Actions */}
           <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             <button
-              onClick={() => setSaved(prev => !prev)}
+              onClick={toggleSaved}
               aria-label={saved ? `Remove ${product.title} from saved` : `Save ${product.title}`}
               aria-pressed={saved}
               className="p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white text-stone-800"
@@ -68,15 +107,21 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             ))}
           </div>
 
-          <a
-            href={product.productUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`View ${product.title} on retailer site`}
-            className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
-          >
-            View Product <ExternalLink className="w-3 h-3" aria-hidden="true" />
-          </a>
+          {product.productUrl && product.productUrl.startsWith('http') ? (
+            <a
+              href={product.productUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`View ${product.title} on retailer site`}
+              className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              View Product <ExternalLink className="w-3 h-3" aria-hidden="true" />
+            </a>
+          ) : (
+            <span className="w-full py-2.5 bg-stone-200 text-stone-400 rounded-xl text-sm font-medium flex items-center justify-center gap-2 cursor-not-allowed">
+              No link available
+            </span>
+          )}
         </div>
       </div>
     </div>

@@ -1,0 +1,238 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { ArrowLeft, Heart, History, ExternalLink, Trash2 } from 'lucide-react';
+import type { Product, AnalysisResult } from '../../types';
+
+interface HistoryEntry {
+  id: string;
+  timestamp: string;
+  analysis: AnalysisResult;
+  products: Product[];
+}
+
+const formatPrice = (price: number, currency: string) => {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(price);
+  } catch {
+    return `${currency} ${price}`;
+  }
+};
+
+const ProfilePage: React.FC = () => {
+  const [likedProducts, setLikedProducts] = useState<Product[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [tab, setTab] = useState<'liked' | 'history'>('liked');
+
+  useEffect(() => {
+    try {
+      const liked: Product[] = JSON.parse(localStorage.getItem('furnisnap_liked_products') || '[]');
+      setLikedProducts(liked);
+    } catch { /* ignore */ }
+
+    try {
+      const hist: HistoryEntry[] = JSON.parse(localStorage.getItem('furnisnap_history') || '[]');
+      setHistory(hist);
+    } catch { /* ignore */ }
+  }, []);
+
+  const removeLiked = (id: string) => {
+    const updated = likedProducts.filter(p => p.id !== id);
+    setLikedProducts(updated);
+    localStorage.setItem('furnisnap_liked_products', JSON.stringify(updated));
+    const ids = updated.map(p => p.id);
+    localStorage.setItem('furnisnap_liked', JSON.stringify(ids));
+  };
+
+  const clearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem('furnisnap_history');
+  };
+
+  return (
+    <div className="min-h-screen bg-stone-50 font-sans text-stone-900">
+      <nav className="fixed w-full top-0 z-50 bg-stone-50/80 backdrop-blur-md border-b border-stone-200/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
+          <Link href="/" className="text-stone-500 hover:text-stone-900 transition-colors" aria-label="Back to home">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <span className="font-semibold text-lg tracking-tight">Profile</span>
+        </div>
+      </nav>
+
+      <main className="pt-24 max-w-7xl mx-auto px-4 sm:px-6 pb-20">
+        {/* Tab switcher */}
+        <div className="flex gap-2 mb-8">
+          <button
+            onClick={() => setTab('liked')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-colors ${
+              tab === 'liked' ? 'bg-stone-900 text-white' : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-50'
+            }`}
+          >
+            <Heart className="w-4 h-4" />
+            Saved ({likedProducts.length})
+          </button>
+          <button
+            onClick={() => setTab('history')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-colors ${
+              tab === 'history' ? 'bg-stone-900 text-white' : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-50'
+            }`}
+          >
+            <History className="w-4 h-4" />
+            History ({history.length})
+          </button>
+        </div>
+
+        {/* Liked Products */}
+        {tab === 'liked' && (
+          <>
+            {likedProducts.length === 0 ? (
+              <div className="py-24 text-center">
+                <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Heart className="w-7 h-7 text-stone-400" />
+                </div>
+                <p className="text-stone-500 text-lg">No saved products yet.</p>
+                <p className="text-stone-400 text-sm mt-1">Heart a product on the results page to save it here.</p>
+                <Link href="/" className="inline-block mt-6 px-6 py-2.5 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-colors">
+                  Start Searching
+                </Link>
+              </div>
+            ) : (
+              <div className="columns-1 sm:columns-2 lg:columns-4 gap-6 space-y-6">
+                {likedProducts.map(product => (
+                  <div key={product.id} className="break-inside-avoid mb-6 group relative">
+                    <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-stone-100/50">
+                      <div className="relative aspect-[4/5] overflow-hidden bg-stone-100">
+                        <img
+                          src={product.imageUrl}
+                          alt={product.title}
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        />
+                        <button
+                          onClick={() => removeLiked(product.id)}
+                          aria-label={`Remove ${product.title} from saved`}
+                          className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </button>
+                        <div className="absolute top-3 left-3">
+                          <span className={`px-2 py-1 rounded-md text-xs font-semibold backdrop-blur-md ${
+                            product.similarityScore > 90 ? 'bg-green-500/90 text-white' : 'bg-stone-900/60 text-white'
+                          }`}>
+                            {product.similarityScore}% match
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <div className="flex justify-between items-start mb-1">
+                          <h3 className="font-medium text-stone-900 text-base leading-tight truncate pr-2">{product.title}</h3>
+                          <span className="font-semibold text-stone-900 text-sm">{formatPrice(product.price, product.currency)}</span>
+                        </div>
+                        <p className="text-sm text-stone-500 mb-3">{product.brand}</p>
+                        {product.productUrl && product.productUrl.startsWith('http') ? (
+                          <a
+                            href={product.productUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                          >
+                            View Product <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <span className="w-full py-2 bg-stone-200 text-stone-400 rounded-xl text-sm font-medium flex items-center justify-center cursor-not-allowed">
+                            No link available
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Search History */}
+        {tab === 'history' && (
+          <>
+            {history.length === 0 ? (
+              <div className="py-24 text-center">
+                <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <History className="w-7 h-7 text-stone-400" />
+                </div>
+                <p className="text-stone-500 text-lg">No search history yet.</p>
+                <p className="text-stone-400 text-sm mt-1">Your searches will appear here after you snap a photo.</p>
+                <Link href="/" className="inline-block mt-6 px-6 py-2.5 bg-stone-900 text-white rounded-xl text-sm font-medium hover:bg-stone-800 transition-colors">
+                  Start Searching
+                </Link>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-end mb-4">
+                  <button
+                    onClick={clearHistory}
+                    className="flex items-center gap-1.5 text-sm text-stone-400 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" /> Clear history
+                  </button>
+                </div>
+                <div className="space-y-6">
+                  {history.map(entry => (
+                    <div key={entry.id} className="bg-white rounded-2xl border border-stone-200 p-5">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="font-semibold text-stone-900">
+                            {entry.analysis.category} — <span className="text-stone-500 font-normal">{entry.analysis.style}</span>
+                          </p>
+                          <p className="text-xs text-stone-400 mt-0.5">
+                            {new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            {' · '}{entry.products.length} results
+                          </p>
+                        </div>
+                        <div className="flex gap-1.5">
+                          {entry.analysis.colors.slice(0, 4).map(color => (
+                            <div
+                              key={color}
+                              className="w-5 h-5 rounded-full border border-stone-200"
+                              style={{ backgroundColor: color.toLowerCase() }}
+                              title={color}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-sm text-stone-500 mb-4 line-clamp-2">"{entry.analysis.description}"</p>
+                      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+                        {entry.products.slice(0, 6).map(product => (
+                          <a
+                            key={product.id}
+                            href={product.productUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-shrink-0 w-20 group"
+                            aria-label={product.title}
+                          >
+                            <div className="w-20 h-20 rounded-xl overflow-hidden bg-stone-100 mb-1">
+                              <img
+                                src={product.imageUrl}
+                                alt={product.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              />
+                            </div>
+                            <p className="text-[10px] text-stone-500 truncate">{product.brand}</p>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default ProfilePage;

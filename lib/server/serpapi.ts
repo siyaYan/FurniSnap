@@ -7,6 +7,8 @@ export interface RawProductCandidate {
   price: number;
   currency: string;
   brand: string;
+  colors?: string[];
+  materials?: string[];
 }
 
 interface SerpApiShoppingResult {
@@ -63,15 +65,17 @@ export const fetchShoppingCandidates = async (category: string, style: string): 
   const data = (await response.json()) as SerpApiResponse;
   const results = data.shopping_results || [];
 
-  return results.map((item) => {
-    const price = parsePrice(item.extracted_price, item.price);
-    return {
-      title: item.title || 'Unknown Item',
-      image: item.thumbnail || '',
-      url: item.link || '#',
-      price,
-      currency: 'USD',
-      brand: item.source || 'Unknown'
-    };
-  });
+  return results
+    .filter(item => item.link && item.link.startsWith('http'))
+    .map((item) => {
+      const price = parsePrice(item.extracted_price, item.price);
+      return {
+        title: item.title || 'Unknown Item',
+        image: item.thumbnail || '',
+        url: item.link as string,
+        price,
+        currency: 'USD',
+        brand: item.source || 'Unknown'
+      };
+    });
 };
