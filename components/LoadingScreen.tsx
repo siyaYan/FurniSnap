@@ -15,18 +15,18 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ step }) => {
   }, [step]);
 
   return (
-    <div className="flex flex-col items-center justify-center h-64 p-8 w-full animate-in fade-in duration-500">
+    <div className="flex flex-col items-center justify-center h-64 p-8 w-full">
       <div className="relative">
-        <div className="absolute inset-0 bg-stone-200 rounded-full animate-ping opacity-25"></div>
-        <div className="relative bg-white p-4 rounded-full shadow-lg border border-stone-100">
-          {step === 'UPLOADING' && <Loader2 className="w-8 h-8 text-stone-800 animate-spin" />}
-          {step === 'ANALYZING' && <Sparkles className="w-8 h-8 text-amber-500 animate-pulse" />}
-          {step === 'SEARCHING' && <Search className="w-8 h-8 text-blue-500 animate-bounce" />}
+        <div className="absolute inset-0 bg-brand-terracotta/20 rounded-full animate-ping opacity-30"></div>
+        <div className="relative bg-white/80 backdrop-blur-sm p-5 rounded-full shadow-lg border border-brand-dark/10">
+          {step === 'UPLOADING' && <Loader2 className="w-8 h-8 text-brand-dark animate-spin" />}
+          {step === 'ANALYZING' && <Sparkles className="w-8 h-8 text-brand-terracotta animate-pulse" />}
+          {step === 'SEARCHING' && <Search className="w-8 h-8 text-brand-sage animate-bounce" />}
         </div>
       </div>
-      
-      <h3 className="mt-6 text-xl font-medium text-stone-800">{displayText}</h3>
-      <p className="mt-2 text-stone-400 text-sm text-center max-w-xs">
+
+      <h3 className="mt-6 text-xl font-medium text-brand-dark">{displayText}</h3>
+      <p className="mt-2 text-brand-dark/40 text-sm text-center max-w-xs">
         AI is scanning visual features to match furniture styles.
       </p>
     </div>

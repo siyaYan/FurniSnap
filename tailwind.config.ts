@@ -8,6 +8,11 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        'brand-beige': '#f5f2ed',
+        'brand-sage': '#a3b18a',
+        'brand-terracotta': '#bc6c4b',
+        'brand-cream': '#fefae0',
+        'brand-dark': '#283618',
         stone: {
           50: '#fafaf9',
           100: '#f5f5f4',
@@ -22,7 +27,7 @@ const config: Config = {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif']
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif']
       }
     }
   },

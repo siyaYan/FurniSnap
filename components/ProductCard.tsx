@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Product } from '../types';
 import { ExternalLink, Heart } from 'lucide-react';
+import { motion } from 'motion/react';
 
 const LIKED_KEY = 'furnisnap_liked';
 
@@ -20,9 +21,10 @@ const setLikedIds = (ids: string[]) => {
 
 interface ProductCardProps {
   product: Product;
+  index?: number;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, index = 0 }) => {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -36,12 +38,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       : [...ids, product.id];
     setLikedIds(next);
 
-    // Also persist the full product object for the profile page
     try {
-      const saved: Product[] = JSON.parse(localStorage.getItem('furnisnap_liked_products') || '[]');
+      const savedProducts: Product[] = JSON.parse(localStorage.getItem('furnisnap_liked_products') || '[]');
       const updated = next.includes(product.id)
-        ? [...saved.filter(p => p.id !== product.id), product]
-        : saved.filter(p => p.id !== product.id);
+        ? [...savedProducts.filter(p => p.id !== product.id), product]
+        : savedProducts.filter(p => p.id !== product.id);
       localStorage.setItem('furnisnap_liked_products', JSON.stringify(updated));
     } catch { /* ignore */ }
 
@@ -51,80 +52,77 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const formatPrice = (price: number, currency: string) => {
     try {
       return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(price);
-    } catch (e) {
+    } catch {
       return `${currency} ${price}`;
     }
   };
 
   return (
-    <div className="group break-inside-avoid mb-6 relative">
-      <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-stone-100/50">
-
-        {/* Image Container */}
-        <div className="relative aspect-[4/5] overflow-hidden bg-stone-100">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.07, duration: 0.4 }}
+      className="break-inside-avoid mb-6 group"
+    >
+      <div className="bg-white rounded-3xl p-4 shadow-sm hover:shadow-md transition-shadow">
+        <div className="relative aspect-square rounded-2xl overflow-hidden mb-4 bg-brand-beige">
           <img
             src={product.imageUrl}
             alt={product.title}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
 
-          {/* Overlay Actions */}
-          <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <button
-              onClick={toggleSaved}
-              aria-label={saved ? `Remove ${product.title} from saved` : `Save ${product.title}`}
-              aria-pressed={saved}
-              className="p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white text-stone-800"
-            >
-              <Heart className={`w-4 h-4 transition-colors ${saved ? 'fill-red-500 text-red-500' : ''}`} />
-            </button>
-          </div>
-
-          {/* Similarity Badge */}
+          {/* Match badge */}
           <div className="absolute top-3 left-3">
-             <span className={`px-2 py-1 rounded-md text-xs font-semibold backdrop-blur-md ${
-               product.similarityScore > 90 ? 'bg-green-500/90 text-white' : 'bg-stone-900/60 text-white'
-             }`}>
-               {product.similarityScore}% match
-             </span>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-4">
-          <div className="flex justify-between items-start mb-1">
-            <h3 className="font-medium text-stone-900 text-lg leading-tight truncate pr-2">{product.title}</h3>
-            <span className="font-semibold text-stone-900">{formatPrice(product.price, product.currency)}</span>
-          </div>
-
-          <p className="text-sm text-stone-500 mb-3">{product.brand}</p>
-
-          <div className="flex flex-wrap gap-1 mb-4">
-            {product.tags.map(tag => (
-              <span key={tag} className="px-2 py-0.5 bg-stone-100 text-stone-500 text-[10px] uppercase tracking-wider rounded-full">
-                {tag}
-              </span>
-            ))}
-          </div>
-
-          {product.productUrl && product.productUrl.startsWith('http') ? (
-            <a
-              href={product.productUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`View ${product.title} on retailer site`}
-              className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
-            >
-              View Product <ExternalLink className="w-3 h-3" aria-hidden="true" />
-            </a>
-          ) : (
-            <span className="w-full py-2.5 bg-stone-200 text-stone-400 rounded-xl text-sm font-medium flex items-center justify-center gap-2 cursor-not-allowed">
-              No link available
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold backdrop-blur-sm ${
+              product.similarityScore > 90
+                ? 'bg-brand-sage/90 text-white'
+                : 'bg-brand-dark/60 text-white'
+            }`}>
+              {product.similarityScore}% match
             </span>
-          )}
+          </div>
+
+          {/* Heart button */}
+          <button
+            onClick={toggleSaved}
+            aria-label={saved ? `Remove ${product.title} from saved` : `Save ${product.title}`}
+            aria-pressed={saved}
+            className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center hover:bg-brand-terracotta transition-colors group/heart"
+          >
+            <Heart className={`w-4 h-4 transition-colors ${saved ? 'fill-brand-terracotta text-brand-terracotta' : 'text-brand-terracotta group-hover/heart:text-white'}`} />
+          </button>
         </div>
+
+        <h3 className="font-medium text-brand-dark mb-1 line-clamp-1 text-sm">{product.title}</h3>
+        <p className="text-base font-bold text-brand-dark mb-1">{formatPrice(product.price, product.currency)}</p>
+        <p className="text-xs text-brand-dark/40 mb-3">{product.brand}</p>
+
+        <div className="flex flex-wrap gap-1 mb-3">
+          {product.tags.map(tag => (
+            <span key={tag} className="px-2 py-0.5 bg-brand-sage/10 text-brand-dark/60 text-[10px] uppercase tracking-wider rounded-full">
+              {tag}
+            </span>
+          ))}
+        </div>
+
+        {product.productUrl && product.productUrl.startsWith('http') ? (
+          <a
+            href={product.productUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`View ${product.title} on retailer site`}
+            className="w-full py-2.5 bg-brand-dark hover:bg-brand-terracotta text-white rounded-2xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
+          >
+            View Product <ExternalLink className="w-3 h-3" aria-hidden="true" />
+          </a>
+        ) : (
+          <span className="w-full py-2.5 bg-brand-beige text-brand-dark/30 rounded-2xl text-sm font-medium flex items-center justify-center cursor-not-allowed">
+            No link available
+          </span>
+        )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

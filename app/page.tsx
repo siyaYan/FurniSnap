@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Camera, RefreshCw, AlertCircle, User, ArrowUpDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { fileToBase64 } from '../services/imageUtils';
 import { searchByImage } from '../services/searchService';
 import type { AnalysisResult, Product, SearchFilters } from '../types';
@@ -70,11 +71,10 @@ const Page: React.FC = () => {
       setLoadingState(LoadingState.SEARCHING);
       setProducts(results);
 
-      // Persist search to history in localStorage
       try {
         const existing = JSON.parse(localStorage.getItem('furnisnap_history') || '[]');
         const entry = { id: crypto.randomUUID(), timestamp: new Date().toISOString(), analysis, products: results };
-        const updated = [entry, ...existing].slice(0, 20); // keep last 20
+        const updated = [entry, ...existing].slice(0, 20);
         localStorage.setItem('furnisnap_history', JSON.stringify(updated));
       } catch { /* ignore */ }
 
@@ -107,7 +107,6 @@ const Page: React.FC = () => {
 
   const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean))).sort();
   const brands = Array.from(new Set(products.map(p => p.brand).filter(Boolean))).sort();
-  // Derive from actual product data so filter chips always match what products have
   const colors = Array.from(new Set(products.flatMap(p => p.colors || []).filter(Boolean))).sort();
   const materials = Array.from(new Set(products.flatMap(p => p.materials || []).filter(Boolean))).sort();
 
@@ -133,225 +132,343 @@ const Page: React.FC = () => {
   }).sort((a, b) => {
     if (sortBy === 'price-asc') return a.price - b.price;
     if (sortBy === 'price-desc') return b.price - a.price;
-    return b.similarityScore - a.similarityScore; // 'score' default
+    return b.similarityScore - a.similarityScore;
   });
 
+  const isLoading = loadingState === LoadingState.UPLOADING ||
+    loadingState === LoadingState.ANALYZING ||
+    loadingState === LoadingState.SEARCHING;
+
   return (
-    <div className="min-h-screen font-sans text-stone-900 bg-stone-50 selection:bg-stone-200">
-      <nav className="fixed w-full top-0 z-50 bg-stone-50/80 backdrop-blur-md border-b border-stone-200/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={resetSearch} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && resetSearch()} aria-label="FurniSnap home">
-            <div className="w-8 h-8 bg-stone-900 rounded-lg flex items-center justify-center text-white font-bold font-serif">
-              F
-            </div>
-            <span className="font-semibold text-lg tracking-tight">FurniSnap</span>
-          </div>
-          <div className="flex items-center gap-4">
-            {loadingState === LoadingState.COMPLETE && (
-              <button onClick={resetSearch} className="text-stone-500 hover:text-stone-900 transition-colors" aria-label="Start a new search">
-                <RefreshCw className="w-5 h-5" />
-              </button>
-            )}
-            <Link href="/profile" aria-label="View profile">
-              <div className="w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center hover:bg-stone-300 transition-colors">
-                <User className="w-4 h-4 text-stone-600" />
+    <div className="min-h-screen relative overflow-hidden bg-brand-beige text-brand-dark">
+
+      {/* Animated organic background waves */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full opacity-40">
+          <motion.path
+            animate={{ d: ["M 0 100 Q 25 70 0 20 L 0 100 Z", "M 0 100 Q 35 60 0 30 L 0 100 Z", "M 0 100 Q 25 70 0 20 L 0 100 Z"] }}
+            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+            fill="#a3b18a"
+            className="opacity-60"
+          />
+          <motion.path
+            animate={{ d: ["M 100 0 Q 70 35 40 0 L 100 0 Z", "M 100 0 Q 80 25 50 0 L 100 0 Z", "M 100 0 Q 70 35 40 0 L 100 0 Z"] }}
+            transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+            fill="#d6ccc2"
+            className="opacity-50"
+          />
+          <motion.path
+            animate={{ d: ["M 100 100 Q 75 75 100 40 L 100 100 Z", "M 100 100 Q 85 65 100 50 L 100 100 Z", "M 100 100 Q 75 75 100 40 L 100 100 Z"] }}
+            transition={{ duration: 14, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+            fill="#bc6c4b"
+            className="opacity-70"
+          />
+        </svg>
+        <div className="absolute -top-20 -right-20 w-[600px] h-[600px] bg-brand-sage/10 rounded-full blur-3xl opacity-50" />
+        <div className="absolute top-1/2 -left-40 w-[500px] h-[800px] bg-brand-sage/20 rounded-full blur-3xl opacity-30 rotate-12" />
+        <div className="absolute -bottom-40 -right-20 w-[700px] h-[700px] bg-brand-terracotta/10 rounded-full blur-3xl opacity-40" />
+      </div>
+
+      {/* Navbar */}
+      <nav className="flex items-center justify-between px-8 py-6 bg-transparent relative z-10">
+        <div
+          className="text-3xl font-sans font-semibold cursor-pointer text-brand-terracotta"
+          onClick={resetSearch}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && resetSearch()}
+          aria-label="FurniSnap home"
+        >
+          FurniSnap
+        </div>
+        <div className="flex items-center gap-8 text-sm font-medium text-brand-dark/70">
+          <button onClick={resetSearch} className="hover:text-brand-terracotta transition-colors">
+            Explore
+          </button>
+          {loadingState === LoadingState.COMPLETE && (
+            <button onClick={resetSearch} className="hover:text-brand-terracotta transition-colors flex items-center gap-1" aria-label="New search">
+              <RefreshCw className="w-4 h-4" /> New Search
+            </button>
+          )}
+          <Link href="/profile" aria-label="View profile">
+            <div className="flex items-center gap-2 hover:text-brand-terracotta transition-colors">
+              <div className="w-8 h-8 rounded-full bg-brand-sage/20 flex items-center justify-center">
+                <User size={18} />
               </div>
-            </Link>
-          </div>
+            </div>
+          </Link>
         </div>
       </nav>
 
-      <main className="pt-16 min-h-screen">
-        {/* ERROR STATE */}
-        {loadingState === LoadingState.ERROR && (
-          <div className="max-w-2xl mx-auto px-4 pt-32 flex flex-col items-center text-center" role="alert" aria-live="assertive">
-            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
-              <AlertCircle className="w-8 h-8 text-red-500" />
-            </div>
-            <h2 className="text-xl font-semibold text-stone-900 mb-2">Something went wrong</h2>
-            <p className="text-stone-500 mb-6">{errorMessage}</p>
-            <button
-              onClick={resetSearch}
-              className="px-6 py-3 bg-stone-900 text-white rounded-xl font-medium hover:bg-stone-800 transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
-        )}
+      <main className="relative z-10">
+        <AnimatePresence mode="wait">
 
-        {loadingState === LoadingState.IDLE && (
-          <div className="max-w-4xl mx-auto px-4 pt-20 pb-12 flex flex-col items-center text-center">
-            <span className="inline-block px-3 py-1 rounded-full bg-stone-100 text-stone-500 text-xs font-medium uppercase tracking-widest mb-6 border border-stone-200">
-              AI-Powered Discovery
-            </span>
-            <h1 className="text-4xl md:text-6xl font-bold text-stone-900 tracking-tight mb-6 leading-[1.1]">
-              Snap a space.<br />
-              <span className="text-stone-400">Find your style.</span>
-            </h1>
-            <p className="text-lg text-stone-600 mb-10 max-w-xl leading-relaxed">
-              Upload an image of any furniture. Our AI identifies the style and finds similar products across retailers instantly.
-            </p>
-
-            <div
-              className="w-full max-w-2xl bg-white rounded-3xl p-2 shadow-2xl shadow-stone-200/50 border border-stone-100 cursor-pointer group hover:border-stone-300 transition-all duration-300"
-              onClick={() => fileInputRef.current?.click()}
-              role="button"
-              tabIndex={0}
-              aria-label="Upload a furniture image"
-              onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
+          {/* ERROR STATE */}
+          {loadingState === LoadingState.ERROR && (
+            <motion.div
+              key="error"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="max-w-2xl mx-auto px-4 pt-24 flex flex-col items-center text-center"
+              role="alert"
             >
-              <div className="h-64 border-2 border-dashed border-stone-100 rounded-2xl flex flex-col items-center justify-center bg-stone-50/50 group-hover:bg-stone-50 transition-colors">
-                <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <Camera className="w-8 h-8 text-stone-800" aria-hidden="true" />
-                </div>
-                <p className="text-stone-900 font-medium">Click to upload or drag & drop</p>
-                <p className="text-stone-400 text-sm mt-1">Supports JPG, PNG, WEBP · Max {MAX_FILE_SIZE_MB}MB</p>
+              <div className="w-16 h-16 bg-brand-terracotta/10 rounded-full flex items-center justify-center mb-4">
+                <AlertCircle className="w-8 h-8 text-brand-terracotta" />
               </div>
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleFileSelect}
-                aria-label="Select image file"
-              />
-            </div>
+              <h2 className="text-2xl font-semibold text-brand-dark mb-2">Something went wrong</h2>
+              <p className="text-brand-dark/60 mb-6">{errorMessage}</p>
+              <button
+                onClick={resetSearch}
+                className="px-8 py-3 bg-brand-terracotta text-white rounded-full font-medium hover:bg-brand-terracotta/90 transition-colors"
+              >
+                Try Again
+              </button>
+            </motion.div>
+          )}
 
-            <div className="mt-16 w-full">
-              <p className="text-stone-400 text-sm mb-4 font-medium">TRY A SAMPLE</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    className="group relative rounded-xl overflow-hidden aspect-square cursor-pointer"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Try sample furniture image ${i}`}
-                    onClick={async () => {
-                      const res = await fetch(`https://picsum.photos/400/400?random=${i + 20}`);
-                      const blob = await res.blob();
-                      processImage(new File([blob], 'sample.jpg', { type: 'image/jpeg' }));
-                    }}
-                    onKeyDown={async (e) => {
-                      if (e.key === 'Enter') {
+          {/* LOADING STATE */}
+          {isLoading && (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center min-h-[60vh]"
+              aria-live="polite"
+            >
+              {previewImage && (
+                <div className="w-40 h-40 rounded-3xl overflow-hidden shadow-xl mb-8 border-4 border-white/60">
+                  <img src={previewImage} alt="Uploaded furniture" className="w-full h-full object-cover" />
+                </div>
+              )}
+              <LoadingScreen step={loadingState as 'UPLOADING' | 'ANALYZING' | 'SEARCHING'} />
+            </motion.div>
+          )}
+
+          {/* IDLE / LANDING STATE */}
+          {loadingState === LoadingState.IDLE && (
+            <motion.div
+              key="landing"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
+              {/* Hero */}
+              <div className="flex flex-col items-center justify-center pt-12 pb-20 px-4 text-center">
+                <motion.h1
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-6xl md:text-7xl font-bold text-brand-terracotta mb-4"
+                >
+                  Snap a space. Find your style.
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-lg text-brand-dark/60 mb-12 max-w-2xl"
+                >
+                  Upload an image to identify and match furniture styles instantly.
+                </motion.p>
+
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                      const validationError = validateFile(e.dataTransfer.files[0]);
+                      if (!validationError) processImage(e.dataTransfer.files[0]);
+                    }
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Upload a furniture image"
+                  onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
+                  className="w-full max-w-3xl aspect-[3/1] bg-white/40 backdrop-blur-sm border-2 border-brand-sage/30 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/60 transition-all group shadow-xl shadow-brand-dark/5"
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    accept="image/jpeg,image/png,image/webp"
+                    aria-label="Select image file"
+                  />
+                  <div className="w-16 h-16 rounded-2xl bg-brand-sage/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Camera size={32} className="text-brand-sage" />
+                  </div>
+                  <h3 className="text-xl font-medium text-brand-dark mb-1">
+                    Click to upload or drag & drop
+                  </h3>
+                  <p className="text-sm text-brand-dark/40">
+                    Supports JPG, PNG, WEBP · Max {MAX_FILE_SIZE_MB}MB
+                  </p>
+                </motion.div>
+              </div>
+
+              {/* Sample Grid */}
+              <div className="max-w-6xl mx-auto px-8 pb-20">
+                <h2 className="text-center text-sm font-bold tracking-widest text-brand-dark/40 mb-8 uppercase">
+                  Try a Sample
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  {[1, 2, 3, 4].map((i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 + i * 0.1 }}
+                      className="group cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Try sample furniture image ${i}`}
+                      onClick={async () => {
                         const res = await fetch(`https://picsum.photos/400/400?random=${i + 20}`);
                         const blob = await res.blob();
                         processImage(new File([blob], 'sample.jpg', { type: 'image/jpeg' }));
-                      }
-                    }}
-                  >
-                    <img
-                      src={`https://picsum.photos/400/400?random=${i + 20}`}
-                      alt={`Sample furniture ${i}`}
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {(loadingState === LoadingState.UPLOADING || loadingState === LoadingState.ANALYZING || loadingState === LoadingState.SEARCHING) && (
-          <div className="max-w-2xl mx-auto px-4 pt-32 flex flex-col items-center" aria-live="polite" aria-atomic="true">
-            {previewImage && (
-              <div className="w-48 h-48 rounded-2xl overflow-hidden shadow-lg mb-8 border-4 border-white">
-                <img src={previewImage} alt="Uploaded furniture being analyzed" className="w-full h-full object-cover" />
-              </div>
-            )}
-            <LoadingScreen step={loadingState as 'UPLOADING' | 'ANALYZING' | 'SEARCHING'} />
-          </div>
-        )}
-
-        {loadingState === LoadingState.COMPLETE && analysisResult && (
-          <div className="min-h-screen flex flex-col">
-            <FilterBar
-              filters={filters}
-              onFilterChange={setFilters}
-              detectedStyle={analysisResult.style}
-              categories={categories}
-              brands={brands}
-              colors={colors}
-              materials={materials}
-              priceMax={maxPriceLimit}
-            />
-
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-20 w-full">
-              <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                  <h2 className="text-3xl font-bold text-stone-900 mb-2">
-                    Found {visibleProducts.length} Matches
-                  </h2>
-                  <p className="text-stone-500">
-                    Identified: <span className="font-semibold text-stone-800">{analysisResult.category}</span> in <span className="font-semibold text-stone-800">{analysisResult.style}</span> style.
-                  </p>
-                  <p className="text-sm text-stone-400 mt-1 max-w-2xl">
-                    "{analysisResult.description}"
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3 flex-wrap">
-                  <div className="flex gap-2 flex-wrap" aria-label="Detected colors">
-                    {analysisResult.colors.map(color => (
-                      <div key={color} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-xs font-medium text-stone-600">
-                        <div className="w-3 h-3 rounded-full bg-stone-400 border border-stone-200" style={{ backgroundColor: color.toLowerCase() }} aria-hidden="true"></div>
-                        {color}
+                      }}
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter') {
+                          const res = await fetch(`https://picsum.photos/400/400?random=${i + 20}`);
+                          const blob = await res.blob();
+                          processImage(new File([blob], 'sample.jpg', { type: 'image/jpeg' }));
+                        }
+                      }}
+                    >
+                      <div className="aspect-[4/5] rounded-3xl overflow-hidden mb-3 shadow-lg group-hover:shadow-xl transition-all">
+                        <img
+                          src={`https://picsum.photos/400/400?random=${i + 20}`}
+                          alt={`Sample furniture ${i}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
                       </div>
-                    ))}
+                      <p className="text-center text-sm font-medium text-brand-dark/70">
+                        Sample {i}
+                      </p>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* RESULTS STATE */}
+          {loadingState === LoadingState.COMPLETE && analysisResult && (
+            <motion.div
+              key="results"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="min-h-screen flex flex-col"
+            >
+              <FilterBar
+                filters={filters}
+                onFilterChange={setFilters}
+                detectedStyle={analysisResult.style}
+                categories={categories}
+                brands={brands}
+                colors={colors}
+                materials={materials}
+                priceMax={maxPriceLimit}
+              />
+
+              <div className="max-w-7xl mx-auto px-8 pb-20 w-full">
+                <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                  <div>
+                    <motion.h2
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="text-5xl font-bold text-brand-dark mb-2"
+                    >
+                      Found {visibleProducts.length} Matches
+                    </motion.h2>
+                    <motion.p
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className="text-brand-dark/60"
+                    >
+                      Identified: <span className="font-medium text-brand-dark">{analysisResult.category}</span> in <span className="font-medium text-brand-dark">{analysisResult.style}</span> style.
+                    </motion.p>
+                    <p className="text-sm text-brand-dark/40 mt-1 max-w-2xl">
+                      "{analysisResult.description}"
+                    </p>
                   </div>
 
-                  <div className="flex items-center gap-2 ml-auto">
-                    <ArrowUpDown className="w-4 h-4 text-stone-400" aria-hidden="true" />
-                    <div className="flex rounded-xl border border-stone-200 bg-white overflow-hidden text-sm" role="group" aria-label="Sort results">
-                      {SORT_OPTIONS.map(opt => (
-                        <button
-                          key={opt.value}
-                          onClick={() => setSortBy(opt.value)}
-                          aria-pressed={sortBy === opt.value}
-                          className={`px-3 py-1.5 font-medium transition-colors whitespace-nowrap ${
-                            sortBy === opt.value
-                              ? 'bg-stone-900 text-white'
-                              : 'text-stone-500 hover:bg-stone-50'
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex gap-2 flex-wrap" aria-label="Detected colors">
+                      {analysisResult.colors.map(color => (
+                        <div key={color} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/60 border border-brand-sage/20 text-xs font-medium text-brand-dark/70">
+                          <div className="w-3 h-3 rounded-full border border-white/50" style={{ backgroundColor: color.toLowerCase() }} aria-hidden="true"></div>
+                          {color}
+                        </div>
                       ))}
+                    </div>
+
+                    <div className="flex items-center gap-2 ml-auto">
+                      <ArrowUpDown className="w-4 h-4 text-brand-dark/30" aria-hidden="true" />
+                      <div className="flex rounded-full border border-brand-dark/10 bg-white/50 overflow-hidden text-sm" role="group" aria-label="Sort results">
+                        {SORT_OPTIONS.map(opt => (
+                          <button
+                            key={opt.value}
+                            onClick={() => setSortBy(opt.value)}
+                            aria-pressed={sortBy === opt.value}
+                            className={`px-4 py-1.5 font-medium transition-colors whitespace-nowrap ${
+                              sortBy === opt.value
+                                ? 'bg-brand-terracotta text-white'
+                                : 'text-brand-dark/60 hover:bg-white/80'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="columns-1 sm:columns-2 lg:columns-4 gap-6 space-y-6">
-                {visibleProducts.map(product => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-
-              {visibleProducts.length === 0 && (
-                <div className="py-20 text-center">
-                  <p className="text-stone-400 text-lg">No products match your current filters.</p>
-                  <button
-                    onClick={() => setFilters({
-                      minPrice: 0,
-                      maxPrice: maxPriceLimit,
-                      style: null,
-                      brand: null,
-                      category: null,
-                      colors: [],
-                      materials: []
-                    })}
-                    className="mt-4 text-stone-900 underline font-medium"
-                  >
-                    Clear Filters
-                  </button>
+                <div className="columns-1 sm:columns-2 lg:columns-4 gap-6 space-y-6">
+                  {visibleProducts.map((product, index) => (
+                    <ProductCard key={product.id} product={product} index={index} />
+                  ))}
                 </div>
-              )}
-            </div>
-          </div>
-        )}
+
+                {visibleProducts.length === 0 && (
+                  <div className="py-20 text-center">
+                    <p className="text-brand-dark/40 text-lg">No products match your current filters.</p>
+                    <button
+                      onClick={() => setFilters({
+                        minPrice: 0,
+                        maxPrice: maxPriceLimit,
+                        style: null,
+                        brand: null,
+                        category: null,
+                        colors: [],
+                        materials: []
+                      })}
+                      className="mt-4 text-brand-terracotta underline font-medium"
+                    >
+                      Clear Filters
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
       </main>
+
+      <footer className="py-12 text-center text-brand-dark/30 text-sm relative z-10">
+        <p>© 2026 FurniSnap. All rights reserved.</p>
+      </footer>
     </div>
   );
 };
