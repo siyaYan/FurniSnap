@@ -18,7 +18,7 @@ export const analyzeFurnitureImage = async (base64Image: string): Promise<Analys
   `;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: process.env.GEMINI_MODEL ?? 'gemini-3-flash-preview',
     contents: {
       parts: [
         {

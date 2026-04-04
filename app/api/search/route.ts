@@ -22,7 +22,8 @@ export async function POST(req: Request) {
     }
 
     const analysis = await analyzeFurnitureImage(data);
-    
+    console.log('[search] Gemini analysis:', JSON.stringify(analysis));
+
     // 2. Log Search to DB
     const searchRecord = await db.searches.insert({
       user_id: userId,
@@ -34,9 +35,11 @@ export async function POST(req: Request) {
 
     // 3. Fetch Candidates
     const useMock = process.env.USE_MOCK_PRODUCTS === 'true';
+    console.log('[search] useMock:', useMock);
     const rawProducts = useMock
       ? createMockCandidates(analysis.category, analysis.style)
       : await fetchShoppingCandidates(analysis.category, analysis.style);
+    console.log('[search] rawProducts count:', rawProducts.length);
 
     // 3.1 Assign Temp IDs for Ranking (since fetch-products returns raw data without DB IDs)
     const productsWithIds = rawProducts.map((p: any) => ({
@@ -140,6 +143,7 @@ export async function POST(req: Request) {
     });
 
     // Sort results by rank before returning
+    console.log('[search] resultsForResponse count:', resultsForResponse.length);
     resultsForResponse.sort((a, b) => a.rank - b.rank);
 
     // Return combined result to frontend matching the spec

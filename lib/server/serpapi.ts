@@ -13,7 +13,7 @@ export interface RawProductCandidate {
 
 interface SerpApiShoppingResult {
   title?: string;
-  link?: string;
+  product_link?: string;
   thumbnail?: string;
   price?: string;
   extracted_price?: number;
@@ -62,17 +62,20 @@ export const fetchShoppingCandidates = async (category: string, style: string): 
     throw new Error(`SerpAPI request failed: ${response.status}`);
   }
 
-  const data = (await response.json()) as SerpApiResponse;
-  const results = data.shopping_results || [];
+  const data = (await response.json()) as SerpApiResponse & { inline_shopping_results?: SerpApiShoppingResult[], error?: string };
+  if (data.error) console.error('[serpapi] API error:', data.error);
+  console.log('[serpapi] shopping_results:', data.shopping_results?.length ?? 'missing', '| inline_shopping_results:', data.inline_shopping_results?.length ?? 'missing');
+  const results = data.shopping_results ?? data.inline_shopping_results ?? [];
+  if (results.length > 0) console.log('[serpapi] first result keys:', Object.keys(results[0]));
 
   return results
-    .filter(item => item.link && item.link.startsWith('http'))
+    .filter(item => item.product_link && item.product_link.startsWith('http'))
     .map((item) => {
       const price = parsePrice(item.extracted_price, item.price);
       return {
         title: item.title || 'Unknown Item',
         image: item.thumbnail || '',
-        url: item.link as string,
+        url: item.product_link as string,
         price,
         currency: 'USD',
         brand: item.source || 'Unknown'
